@@ -789,7 +789,7 @@
 
             if (API_KEY === 'AIzaSyDzFHyTVnms1GiQk0PBPeWrISdfITGkH30') {
                 addMessage(question, true);
-                addMessage('⚠️ Please add your Gemini API key to use Jarmana. Get your free API key from Google AI Studio (https://aistudio.google.com/app/apikey)', false);
+                addMessage('⚠️ Please add your API key to use Jarmana.', false);
                 return;
             }
 
@@ -811,7 +811,7 @@ RULES:
 If the question is NOT about CUET, politely redirect them to ask CUET-related questions.`;
 
                 const response = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDzFHyTVnms1GiQk0PBPeWrISdfITGkH30`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
