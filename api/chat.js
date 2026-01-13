@@ -1,148 +1,128 @@
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-// Get directory path for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Load CUET data files
-let cuetData = null;
-let bulletinData = null;
-
-try {
-  const dataPath = join(__dirname, '..', 'cuet-data.json');
-  cuetData = JSON.parse(readFileSync(dataPath, 'utf8'));
-} catch (error) {
-  console.error('Failed to load CUET course data:', error.message);
-}
-
-try {
-  const bulletinPath = join(__dirname, '..', 'cuet-2026-bulletin.json');
-  bulletinData = JSON.parse(readFileSync(bulletinPath, 'utf8'));
-} catch (error) {
-  console.error('Failed to load CUET 2026 bulletin:', error.message);
-}
-
-// Official CUET 2026 information (hardcoded as backup)
-const CUET_2026_INFO = `
-CUET UG 2026 - OFFICIAL INFORMATION (NTA)
-
-📅 IMPORTANT DATES:
-• Online Application: 03-30 January 2026
-• Fee Payment Deadline: 31 January 2026
-• Correction Window: 02-04 February 2026
-• Examination: 11-31 May 2026 (Tentative)
-• Website: https://cuet.nta.nic.in
-
-💰 FEE STRUCTURE:
-• General (UR): ₹1000 (up to 3 subjects) + ₹400 each additional
-• OBC-NCL / EWS: ₹900 + ₹375 each additional
-• SC/ST/PwD: ₹800 + ₹350 each additional
-
-📝 EXAM PATTERN:
-• Mode: Computer Based Test (CBT)
-• Medium: 13 Languages
-• Maximum Subjects: 5
-• Questions: 50 per paper (All Compulsory)
-• Duration: 60 minutes per paper
-• Marking: +5 correct, -1 incorrect
-
-📚 SUBJECTS (Total 37):
-Languages (13): English, Hindi, Assamese, Bengali, Gujarati, Kannada, Malayalam, Marathi, Odia, Punjabi, Tamil, Telugu, Urdu
-
-Domain Subjects (23): Accountancy, Agriculture, Anthropology, Biology/Biotech, Business Studies, Chemistry, Computer Science, Economics, Environmental Science, Fine Arts, Geography/Geology, History, Home Science, Knowledge Tradition, Mass Media, Mathematics, Performing Arts, Physical Education, Physics, Political Science, Psychology, Sanskrit, Sociology
-
-General Test (1): General Aptitude Test
-
-🏛️ 48 CENTRAL UNIVERSITIES participating
-
-📞 NTA Helpdesk: cuet-ug@nta.ac.in | 011-40759000
-`;
-
-// Search courses
-function searchCourses(query) {
-  if (!cuetData?.universities) return [];
-  
-  const queryLower = query.toLowerCase();
-  const keywords = queryLower.split(/\s+/).filter(k => k.length > 2);
-  
-  if (keywords.length === 0) return [];
-  
-  return cuetData.universities.filter(course => {
-    const searchText = `${course.university_name || ''} ${course.university_short || ''} ${course.course_name || ''} ${course.course_category || ''} ${course.location || ''} ${course.stream_12th || ''}`.toLowerCase();
-    return keywords.some(keyword => searchText.includes(keyword));
-  }).slice(0, 30);
-}
-
-// Format courses
-function formatCourses(courses) {
-  if (!courses.length) return 'No matching courses found.';
-  
-  return courses.map(c => 
-    `• ${c.course_name} at ${c.university_name} (${c.university_short}), ${c.location}
-  Category: ${c.course_category} | 12th: ${c.stream_12th}
-  CUET Language: ${c.cuet_language_req}
-  Domain Subjects: ${c.cuet_domain_subjects_req}
-  General Test: ${c.cuet_general_test_req}
-  Notes: ${c.comments}`
-  ).join('\n\n');
-}
-
 export default async function handler(req, res) {
-  // CORS
+  // CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   const apiKey = process.env.GEMINI_API_KEY;
+  
   if (!apiKey) {
-    console.error('GEMINI_API_KEY not configured');
-    return res.status(500).json({ error: 'API key not configured. Please add GEMINI_API_KEY to Vercel environment variables.' });
+    return res.status(500).json({ 
+      error: 'API key not configured. Please add GEMINI_API_KEY in Vercel Environment Variables.' 
+    });
   }
 
   try {
     const { message } = req.body;
-    if (!message) return res.status(400).json({ error: 'Message is required' });
 
-    // Search for relevant courses
-    const courses = searchCourses(message);
-    const coursesInfo = formatCourses(courses);
-    
-    // Build database stats
-    const dbStats = cuetData 
-      ? `Database: ${cuetData.metadata?.total_courses || 0} courses from ${cuetData.metadata?.total_universities || 0} universities`
-      : 'Course database not loaded';
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
 
-    const systemPrompt = `You are Jarmana, an AI assistant by Nudge Academy for CUET UG 2026 guidance.
+    const systemPrompt = `You are Jarmana, an AI assistant created by Nudge Academy, specializing in CUET UG 2026 guidance.
 
-${CUET_2026_INFO}
+═══════════════════════════════════════════════════════════════
+CUET UG 2026 - OFFICIAL INFORMATION (NTA Information Bulletin)
+═══════════════════════════════════════════════════════════════
 
-${dbStats}
+📅 IMPORTANT DATES:
+• Online Application: 03-30 January 2026 (upto 11:50 PM)
+• Fee Payment Deadline: 31 January 2026 (upto 11:50 PM)
+• Correction Window: 02-04 February 2026 (upto 11:50 PM)
+• Examination Dates: 11-31 May 2026 (Tentative)
+• Website: https://cuet.nta.nic.in
 
-RELEVANT COURSES FOR THIS QUERY:
-${coursesInfo}
+💰 FEE STRUCTURE:
+• General (UR): ₹1000 (up to 3 subjects) + ₹400 each additional
+• OBC-NCL / EWS: ₹900 (up to 3 subjects) + ₹375 each additional
+• SC/ST/PwD/Third Gender: ₹800 (up to 3 subjects) + ₹350 each additional
+• Centres Outside India: ₹4500 (up to 3 subjects) + ₹1800 each additional
+
+📝 EXAM PATTERN:
+• Mode: Computer Based Test (CBT)
+• Medium: 13 Languages (Assamese, Bengali, English, Gujarati, Hindi, Kannada, Malayalam, Marathi, Punjabi, Odia, Tamil, Telugu, Urdu)
+• Maximum Subjects: 5 (including languages and GAT)
+• Questions per Paper: 50 (All Compulsory)
+• Duration: 60 minutes per paper
+• Marking: +5 for correct, -1 for incorrect (Negative Marking)
+
+📚 SUBJECTS OFFERED (Total: 37):
+
+LANGUAGES (13):
+101-English, 102-Hindi, 103-Assamese, 104-Bengali, 105-Gujarati, 106-Kannada, 107-Malayalam, 108-Marathi, 109-Odia, 110-Punjabi, 111-Tamil, 112-Telugu, 113-Urdu
+
+DOMAIN SUBJECTS (23):
+301-Accountancy/Book Keeping, 302-Agriculture, 303-Anthropology, 304-Biology/Biotechnology/Biochemistry, 305-Business Studies, 306-Chemistry, 307-Environmental Science, 308-Computer Science/Information Practices, 309-Economics/Business Economics, 312-Fine Arts/Visual Arts, 313-Geography/Geology, 314-History, 315-Home Science, 316-Knowledge Tradition-Practices in India, 318-Mass Media/Mass Communication, 319-Mathematics/Applied Mathematics, 320-Performing Arts, 321-Physical Education/Yoga/Sports, 322-Physics, 323-Political Science, 324-Psychology, 325-Sanskrit, 326-Sociology
+
+GENERAL TEST:
+501-General Aptitude Test (GK, Current Affairs, Mental Ability, Numerical Ability, Quantitative Reasoning, Logical & Analytical Reasoning)
+
+📖 SYLLABUS:
+• Language Subjects: Reading Comprehension (Factual, Literary, Narrative passages), Literary Aptitude, Vocabulary
+• Domain Subjects: As per NCERT Class 12 Syllabus
+• General Aptitude Test: GK, Current Affairs, Mental Ability, Numerical Ability, Logical Reasoning
+
+🏛️ 48 CENTRAL UNIVERSITIES:
+Aligarh Muslim University, Assam University Silchar, Babasaheb Bhimrao Ambedkar University, Banaras Hindu University, Central Sanskrit University, Central Tribal University of Andhra Pradesh, Central University of Andhra Pradesh, Central University of Gujarat, Central University of Haryana, Central University of Himachal Pradesh, Central University of Jammu, Central University of Jharkhand, Central University of Karnataka, Central University of Kashmir, Central University of Kerala, Central University of Odisha, Central University of Punjab, Central University of Rajasthan, Central University of South Bihar, Central University of Tamil Nadu, Dr. Harisingh Gour Vishwavidyalaya, Guru Ghasidas Vishwavidyalaya, Hemvati Nandan Bahuguna Garhwal University, Indira Gandhi National Tribal University, Jamia Millia Islamia, Jawaharlal Nehru University, Mahatma Gandhi Antarrashtriya Hindi Vishwavidyalaya, Mahatma Gandhi Central University, Manipur University, Maulana Azad National Urdu University, Mizoram University, Nagaland University, National Sanskrit University, North-Eastern Hill University, Pondicherry University, Rajiv Gandhi National Aviation University, Rajiv Gandhi University Arunachal Pradesh, Shri Lal Bahadur Shastri National Sanskrit University, Sikkim University, Sammakka Sarakka Central Tribal University, South Asian University, Tezpur University, The English and Foreign Languages University, Tripura University, University of Allahabad, University of Delhi, University of Hyderabad, Visva-Bharati University
+
+📞 NTA HELPDESK:
+• Email: cuet-ug@nta.ac.in
+• Phone: 011-40759000 / 011-69227700
+
+POPULAR COURSES & REQUIREMENTS:
+
+DELHI UNIVERSITY (DU):
+• BA (Hons) courses: 1 Language + 3 Domain subjects OR 2 Languages + 2 Domain subjects
+• BSc (Hons) courses: 1 Language + relevant science subjects (Physics/Chemistry/Math/Biology)
+• B.Com: 1 Language + 3 subjects from List B OR 1 Language + 1 subject + GAT
+
+BHU (Banaras Hindu University):
+• Most courses require: English/Hindi + Domain subjects + GAT
+• Science courses: English/Hindi + Physics + Chemistry + Math/Biology
+
+JNU (Jawaharlal Nehru University):
+• BA courses: Language + relevant domain subjects
+• Integrated programs available
+
+YOUR ROLE:
+- Help students with CUET UG 2026 preparation, exam patterns, subject choices
+- Provide accurate information about important dates, fees, exam pattern
+- Guide on subject-wise preparation tips based on NCERT syllabus
+- Help students choose the right subjects and universities
 
 GUIDELINES:
-1. Be encouraging and student-friendly
-2. Use official data for dates, fees, exam pattern
-3. Use course database for university-specific requirements
-4. Keep responses concise with bullet points
-5. For non-CUET questions: "I'm Jarmana, your CUET expert! How can I help with CUET?"
-6. Always boost student confidence!`;
+1. Always be encouraging and student-friendly
+2. Keep responses concise but informative
+3. Use bullet points for better readability
+4. For non-CUET questions, politely redirect: "I'm Jarmana, your CUET expert! I specialize in CUET UG 2026 preparation. How can I help you with CUET?"
+5. Always boost student confidence!`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: message }] }],
-          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: message }]
+            }
+          ],
+          systemInstruction: {
+            parts: [{ text: systemPrompt }]
+          },
           generationConfig: {
             temperature: 0.7,
             topK: 40,
@@ -163,14 +143,15 @@ GUIDELINES:
 
     if (data.error) {
       console.error('Gemini API Error:', data.error);
-      return res.status(500).json({ error: data.error.message || 'API error' });
+      return res.status(500).json({ error: data.error.message || 'API request failed' });
     }
 
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not generate a response.';
+
     return res.status(200).json({ reply });
 
   } catch (error) {
     console.error('Server error:', error);
-    return res.status(500).json({ error: 'Internal server error: ' + error.message });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
