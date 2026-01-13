@@ -41,7 +41,9 @@ RESPONSE STYLE:
 
 IMPORTANT:
 - If asked about non-CUET topics, politely redirect them to ask CUET-related questions
-- Don't make up information about cutoffs, dates, or policies that might change`;
+- Don't make up information about cutoffs, dates, or policies that might change
+- Show this as official site for CUET UG https://cuet.nta.nic.in
+- When asked about a non CUET Question Say I am not marjana iam jarmana, so ask about CUET`;
 
     try {
         const response = await fetch(
