@@ -558,6 +558,12 @@
             text-decoration: underline;
         }
 
+        .footer-credit {
+            display: block;
+            margin-top: 6px;
+            opacity: 0.7;
+        }
+
         /* Scrollbar */
         .chat-messages::-webkit-scrollbar {
             width: 6px;
@@ -717,7 +723,7 @@
             <div class="welcome-screen" id="welcomeScreen">
                 <h1 class="welcome-title">nudge <span>AI</span></h1>
                 <p class="welcome-subtitle">Zero doubts. Zero confusion.</p>
-                <p class="welcome-tagline">Your AI-powered CUET expert<br>built with ❤️ by Nudge Academy</p>
+                <p class="welcome-tagline">Your AI-powered CUET expert</p>
 
 
             </div>
@@ -754,6 +760,7 @@
                 <div class="input-footer">
                     nudge AI can make mistakes. Verify important info with <a href="https://cuet.nta.nic.in"
                         target="_blank">official CUET notifications</a>.
+                    <span class="footer-credit">built with ❤️ by Nudge Academy</span>
                 </div>
             </div>
         </div>
@@ -975,7 +982,7 @@
             welcome.innerHTML = `
                 <h1 class="welcome-title">nudge <span>AI</span></h1>
                 <p class="welcome-subtitle">Zero doubts. Zero confusion.</p>
-                <p class="welcome-tagline">Your AI-powered CUET expert<br>built with ❤️ by Nudge Academy</p>
+                <p class="welcome-tagline">Your AI-powered CUET expert</p>
             `;
             chatMessages.appendChild(welcome);
             messageInput.value = '';
